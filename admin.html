@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 20px; color: #0f172a; }
-        .container { max-width: 650px; margin: 40px auto; }
+        .container { max-width: 800px; margin: 40px auto; }
         .card { border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .btn-primary { background-color: #0f172a; border: none; }
         .btn-primary:hover { background-color: #334155; }
@@ -16,6 +16,13 @@
         .btn-danger { background-color: #dc2626; }
         .form-control:focus { box-shadow: 0 0 0 0.2rem rgba(15,23,42,0.1); border-color: #0f172a; }
         .lock-screen { text-align: center; padding: 40px; }
+        
+        /* Tabel Antrian */
+        .table th { background-color: #0f172a; color: white; }
+        .table td { vertical-align: middle; }
+        .badge-status { padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; }
+        .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-active { background-color: #d1fae5; color: #065f46; }
     </style>
 </head>
 <body>
@@ -63,9 +70,30 @@
                 <button class="btn btn-primary w-100 py-2 fw-bold" onclick="updateAHSVersion()">💾 Simpan Pengaturan</button>
             </div>
             
-            <!-- ==== AKTIVASI AKSES USER ==== -->
+            <!-- ==== ANTRIAN PEMBAYARAN (BARU) ==== -->
             <div class="card p-3 mb-4">
-                <h6 class="fw-bold mb-3">🔑 Aktivasi Akses User</h6>
+                <h6 class="fw-bold mb-3">💳 Antrian Pembayaran (Otomatis dari Firebase)</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Tipe</th>
+                                <th>Kode</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingPaymentsTable">
+                            <tr><td colspan="5" class="text-center text-muted">Memuat antrian...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ==== AKTIVASI AKSES USER (MANUAL) ==== -->
+            <div class="card p-3 mb-4">
+                <h6 class="fw-bold mb-3">🔑 Aktivasi Akses User (Manual)</h6>
                 
                 <div class="mb-3">
                     <label class="form-label fw-bold">User ID</label>
@@ -123,13 +151,13 @@
         // KONFIGURASI FIREBASE (SAMA SEPERTI index.html)
         // ============================================================
         const firebaseConfig = {
-        apiKey: "AIzaSyBLqBuHKh8jOJ1yoDnctadcFgrdOwJ1kqA",
-        authDomain: "sicermat-db.firebaseapp.com",
-        databaseURL: "https://sicermat-db-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "sicermat-db",
-        storageBucket: "sicermat-db.firebasestorage.app",
-        messagingSenderId: "158019957886",
-        appId: "1:158019957886:web:73a8bd9301363d8e32142f"
+            apiKey: "AIzaSyBLqBuHKh8jOJ1yoDnctadcFgrdOwJ1kqA",
+            authDomain: "sicermat-db.firebaseapp.com",
+            databaseURL: "https://sicermat-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sicermat-db",
+            storageBucket: "sicermat-db.firebasestorage.app",
+            messagingSenderId: "158019957886",
+            appId: "1:158019957886:web:fdce9473c3783b4932142f"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -143,7 +171,8 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('adminPanel').style.display = 'block';
                 localStorage.setItem('sicermat_admin_logged_in', 'true');
-                loadAHSVersion();  // Muat pengaturan AHS saat login
+                loadAHSVersion();
+                loadPendingPayments(); // Muat antrian pembayaran
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
@@ -199,6 +228,109 @@
         }
 
         // ============================================================
+        // ANTRIAN PEMBAYARAN (BARU)
+        // ============================================================
+        function loadPendingPayments() {
+            const tbody = document.getElementById('pendingPaymentsTable');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Memuat...</td></tr>';
+
+            // Ambil antrian Add-on
+            database.ref('pendingAddonPayments').once('value').then(snapshot => {
+                const data = snapshot.val() || {};
+                const rows = [];
+                
+                for (let userID in data) {
+                    const item = data[userID];
+                    const statusBadge = item.status === 'aktif' 
+                        ? '<span class="badge-status status-active">Aktif</span>' 
+                        : '<span class="badge-status status-pending">Menunggu</span>';
+                    
+                    rows.push(`
+                        <tr>
+                            <td><small>${userID}</small></td>
+                            <td>🚀 Add-on (Rp 20.000)</td>
+                            <td><code>${item.kode}</code></td>
+                            <td>${statusBadge}</td>
+                            <td>
+                                ${item.status !== 'aktif' ? 
+                                    `<button class="btn btn-success btn-sm" onclick="activateAddonByCode('${userID}', '${item.kode}')">Aktifkan</button>` 
+                                    : '<span class="text-success">✓</span>'}
+                            </td>
+                        </tr>
+                    `);
+                }
+
+                // Ambil antrian Kategori Baru
+                database.ref('pendingNewCatPayments').once('value').then(snapshotNew => {
+                    const dataNew = snapshotNew.val() || {};
+                    
+                    for (let userID in dataNew) {
+                        const item = dataNew[userID];
+                        const statusBadge = item.status === 'aktif' 
+                            ? '<span class="badge-status status-active">Aktif</span>' 
+                            : '<span class="badge-status status-pending">Menunggu</span>';
+                        
+                        rows.push(`
+                            <tr>
+                                <td><small>${userID}</small></td>
+                                <td>🏗️ Kategori Baru (Rp 150.000)</td>
+                                <td><code>${item.kode}</code></td>
+                                <td>${statusBadge}</td>
+                                <td>
+                                    ${item.status !== 'aktif' ? 
+                                        `<button class="btn btn-success btn-sm" onclick="activateNewCatByCode('${userID}', '${item.kode}')">Aktifkan</button>` 
+                                        : '<span class="text-success">✓</span>'}
+                                </td>
+                            </tr>
+                        `);
+                    }
+
+                    if (rows.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada antrian pembayaran</td></tr>';
+                    } else {
+                        tbody.innerHTML = rows.join('');
+                    }
+                });
+            }).catch(err => {
+                console.error('Gagal memuat antrian:', err);
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Gagal memuat data</td></tr>';
+            });
+        }
+
+        // Aktivasi Add-on berdasarkan kode dari antrian
+        function activateAddonByCode(userID, kode) {
+            // Ekstrak kategori dari kode (misal: ADDON-XXXX-Pekerjaan+Beton)
+            // Catatan: Karena kode dibuat acak, kita perlu mapping manual atau simpan kategori di Firebase
+            // Kita asumsikan kategori sudah tersimpan di data antrian
+            database.ref('pendingAddonPayments/' + userID).once('value').then(snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    const category = data.category || 'Lainnya'; // Jika kategori tersimpan
+                    database.ref('usersPremium/' + userID + '/addon/' + category).set(true).then(() => {
+                        database.ref('pendingAddonPayments/' + userID + '/status').set('aktif');
+                        alert('✅ Add-on berhasil diaktifkan!');
+                        loadPendingPayments();
+                    });
+                }
+            });
+        }
+
+        // Aktivasi Kategori Baru berdasarkan kode dari antrian
+        function activateNewCatByCode(userID, kode) {
+            database.ref('pendingNewCatPayments/' + userID).once('value').then(snapshot => {
+                const data = snapshot.val();
+                if (data) {
+                    const category = data.category || 'Lainnya';
+                    database.ref('usersPremium/' + userID + '/addon-newcat/' + category).set(true).then(() => {
+                        database.ref('pendingNewCatPayments/' + userID + '/status').set('aktif');
+                        alert('✅ Kategori Baru berhasil diaktifkan!');
+                        loadPendingPayments();
+                    });
+                }
+            });
+        }
+
+        // ============================================================
         // FUNGSI CEK STATUS USER
         // ============================================================
         function getUserId() {
@@ -239,7 +371,7 @@
         }
 
         // ============================================================
-        // FUNGSI AKTIVASI
+        // FUNGSI AKTIVASI (MANUAL)
         // ============================================================
         function activatePremium() {
             const userId = getUserId();
@@ -292,4 +424,4 @@
         }
     </script>
 </body>
-</html>
+    </html>
