@@ -102,8 +102,8 @@ function checkNewCategoryAccess(category, callback) {
   });
 }
 
-// 11. Tentukan halaman pembayaran berdasarkan tipe add-on
-function getPaymentPage(category) {
+// 11. Tentukan tipe add-on berdasarkan kategori
+function getAddonType(category) {
   const existingCategories = [
     "Pekerjaan Persiapan",
     "Pekerjaan Tanah",
@@ -116,9 +116,9 @@ function getPaymentPage(category) {
   ];
 
   if (existingCategories.includes(category)) {
-    return 'qris-addon.html'; // Add-on per kategori (Rp 20.000)
+    return 'SELECTED'; // Add-on per kategori (Rp 20.000)
   } else {
-    return 'qris-newcat.html'; // Kategori baru + AHS baru (Rp 150.000)
+    return 'NEWCAT'; // Kategori baru + AHS baru (Rp 150.000)
   }
 }
 
@@ -147,7 +147,6 @@ function renderLockedCategoriesWithNew() {
     checkUserPremiumAccess((isPremium) => {
       if (isPremium) {
         // ============ USER PREMIUM: TAMPILKAN AHS LAMA SAJA ============
-        // AHS baru (isNew) TIDAK ditampilkan, tapi badge NEW tetap muncul
         const oldItems = categories[cat].filter(item => !item.isNew);
         oldItems.forEach((item, index) => {
           let unitPrice = 0;
@@ -245,7 +244,7 @@ function renderLockedCategoriesWithNew() {
   }
 }
 
-// 13. Fungsi pop-up Add-on AHS (kode unik terbawa ke halaman pembayaran)
+// 13. Fungsi pop-up Add-on AHS (Sinkron dengan index.html)
 function showAddOnPopup(category) {
   // Cek akses dulu sebelum menampilkan pop-up
   checkUserPremiumAccess((isPremium) => {
@@ -269,7 +268,7 @@ function showAddOnPopup(category) {
         // Ambil versi terbaru (untuk nomor seri)
         const latestVersion = Math.max(...newItems.map(item => item.version || 1));
         const code = generateNewCode(category, latestVersion);
-        const paymentPage = getPaymentPage(category);
+        const addonType = getAddonType(category);
 
         // Bangun HTML isi pop-up
         let itemListHTML = '';
@@ -297,7 +296,7 @@ function showAddOnPopup(category) {
               ${itemListHTML}
             </div>
             
-            <button class="btn btn-success w-100 py-2" onclick="window.open('${paymentPage}?addon=' + encodeURIComponent('${code}'), '_blank')">
+            <button class="btn btn-success w-100 py-2" onclick="processAddonFromPopup('${category}', '${addonType}', '${code}')">
               💳 Top Up untuk Akses (${code})
             </button>
           </div>
@@ -317,7 +316,34 @@ function showAddOnPopup(category) {
   });
 }
 
-// 14. Inisialisasi saat halaman dimuat
+// 14. Fungsi yang dipanggil saat tombol "Top Up" di pop-up diklik
+//     (Fungsi ini memanggil fungsi yang sudah ada di index.html)
+function processAddonFromPopup(category, type, code) {
+  // Panggil fungsi yang ada di index.html
+  if (type === 'SELECTED') {
+    if (typeof processAddonSelection === 'function') {
+      processAddonSelection(type);
+    } else {
+      // Fallback jika fungsi belum ada
+      const userID = getCurrentUserId();
+      localStorage.setItem('sicermat_selected_addon_type', type);
+      localStorage.setItem('sicermat_selected_addon_kode', code);
+      window.location.href = 'qris-addon.html';
+    }
+  } else if (type === 'NEWCAT') {
+    if (typeof processNewCatSelection === 'function') {
+      processNewCatSelection(type);
+    } else {
+      // Fallback jika fungsi belum ada
+      const userID = getCurrentUserId();
+      localStorage.setItem('sicermat_selected_addon_type', type);
+      localStorage.setItem('sicermat_selected_newcat_kode', code);
+      window.location.href = 'qris-newcat.html';
+    }
+  }
+}
+
+// 15. Inisialisasi saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
   // Cek apakah modal addOnModal sudah ada di HTML
   if (!document.getElementById('addOnModal')) {
