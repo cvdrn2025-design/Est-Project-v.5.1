@@ -301,26 +301,32 @@
         // FUNGSI AKTIVASI BERDASARKAN KODE (DARI ANTRIAN)
         // ============================================================
         function activateAddonByCodeAdmin(userID, kode) {
-            // Ekstrak kategori dari kode (Contoh: ADDON-XXXXXX -> Ambil bagian setelah ADDON-)
-            const category = kode.replace('ADDON-', '').replace('NEWAHS', '').replace(/N\d+$/, '');
-            
-            database.ref('usersPremium/' + userID + '/addon/' + category).set(true).then(() => {
-                database.ref('pendingAddonPayments/' + userID + '/status').set('aktif');
-                alert('✅ Add-on berhasil diaktifkan!');
-                loadPendingPayments();
+            // Ambil kategori yang tersimpan di Firebase (lebih akurat)
+            database.ref('pendingAddonPayments/' + userID).once('value').then(snapshot => {
+                const data = snapshot.val();
+                const category = data && data.category ? data.category : 'Lainnya';
+                
+                database.ref('usersPremium/' + userID + '/addon/' + category).set(true).then(() => {
+                    database.ref('pendingAddonPayments/' + userID + '/status').set('aktif');
+                    alert('✅ Add-on kategori "' + category + '" berhasil diaktifkan!');
+                    loadPendingPayments();
+                });
             }).catch(err => {
                 alert('❌ Gagal: ' + err.message);
             });
         }
 
         function activateNewCatByCodeAdmin(userID, kode) {
-            // Ekstrak kategori dari kode (Contoh: NEWCAT-XXXXXX -> Ambil bagian setelah NEWCAT-)
-            const category = kode.replace('NEWCAT-', '').replace('NEWAHS', '').replace(/N\d+$/, '');
-            
-            database.ref('usersPremium/' + userID + '/addon-newcat/' + category).set(true).then(() => {
-                database.ref('pendingNewCatPayments/' + userID + '/status').set('aktif');
-                alert('✅ Kategori Baru berhasil diaktifkan!');
-                loadPendingPayments();
+            // Ambil kategori yang tersimpan di Firebase
+            database.ref('pendingNewCatPayments/' + userID).once('value').then(snapshot => {
+                const data = snapshot.val();
+                const category = data && data.category ? data.category : 'Kategori Baru';
+                
+                database.ref('usersPremium/' + userID + '/addon-newcat/' + category).set(true).then(() => {
+                    database.ref('pendingNewCatPayments/' + userID + '/status').set('aktif');
+                    alert('✅ Kategori baru "' + category + '" berhasil diaktifkan!');
+                    loadPendingPayments();
+                });
             }).catch(err => {
                 alert('❌ Gagal: ' + err.message);
             });
@@ -354,11 +360,16 @@
                 return;
             }
 
-            // Ekstrak kategori dari kode
-            const category = kode.replace('ADDON-', '').replace('NEWAHS', '').replace(/N\d+$/, '');
+            // Ekstrak kategori dari kode: ADDON-[Kategori]-[Acak]
+            // Contoh: ADDON-Pekerjaan-Beton-XXXX -> Pekerjaan Beton
+            let category = kode.replace('ADDON-', '').replace(/-\w+-\w+$/, '').replace(/-/g, ' ');
             
-            const ref = database.ref('usersPremium/' + userId + '/addon/' + category);
-            ref.set(true).then(() => {
+            // Jika kategori kosong (kode tidak valid), gunakan default
+            if (!category || category === '') {
+                category = 'Lainnya';
+            }
+            
+            database.ref('usersPremium/' + userId + '/addon/' + category).set(true).then(() => {
                 alert('✅ Add-on kategori "' + category + '" berhasil diaktifkan untuk User: ' + userId);
                 checkUserStatus();
             }).catch(err => {
@@ -375,11 +386,14 @@
                 return;
             }
 
-            // Ekstrak kategori dari kode
-            const category = kode.replace('NEWCAT-', '').replace('NEWAHS', '').replace(/N\d+$/, '');
+            // Ekstrak kategori dari kode: NEWCAT-[Kategori]-[Acak]
+            let category = kode.replace('NEWCAT-', '').replace(/-\w+-\w+$/, '').replace(/-/g, ' ');
             
-            const ref = database.ref('usersPremium/' + userId + '/addon-newcat/' + category);
-            ref.set(true).then(() => {
+            if (!category || category === '') {
+                category = 'Kategori Baru';
+            }
+            
+            database.ref('usersPremium/' + userId + '/addon-newcat/' + category).set(true).then(() => {
                 alert('✅ Kategori baru "' + category + '" berhasil diaktifkan untuk User: ' + userId);
                 checkUserStatus();
             }).catch(err => {
@@ -424,4 +438,4 @@
         }
     </script>
 </body>
-    </html>
+</html>
