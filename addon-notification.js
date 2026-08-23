@@ -267,8 +267,10 @@ function showAddOnPopup(category) {
 
         // Ambil versi terbaru (untuk nomor seri)
         const latestVersion = Math.max(...newItems.map(item => item.version || 1));
-        const code = generateNewCode(category, latestVersion);
-        const addonType = getAddonType(category);
+        
+        // Kode unik dengan kategori asli
+        const categorySlug = category.replace(/[^a-zA-Z0-9]/g, '-');
+        const code = 'ADDON-' + categorySlug + '-' + Date.now().toString(36).toUpperCase();
 
         // Bangun HTML isi pop-up
         let itemListHTML = '';
@@ -296,8 +298,8 @@ function showAddOnPopup(category) {
               ${itemListHTML}
             </div>
             
-            <button class="btn btn-success w-100 py-2" onclick="processAddonFromPopup('${category}', '${addonType}', '${code}')">
-              💳 Top Up untuk Akses (${code})
+            <button class="btn btn-success w-100 py-2" onclick="processAddonSelection('SELECTED'); return false;">
+              💳 Top Up untuk Akses
             </button>
           </div>
         `;
@@ -316,34 +318,7 @@ function showAddOnPopup(category) {
   });
 }
 
-// 14. Fungsi yang dipanggil saat tombol "Top Up" di pop-up diklik
-//     (Fungsi ini memanggil fungsi yang sudah ada di index.html)
-function processAddonFromPopup(category, type, code) {
-  // Panggil fungsi yang ada di index.html
-  if (type === 'SELECTED') {
-    if (typeof processAddonSelection === 'function') {
-      processAddonSelection(type);
-    } else {
-      // Fallback jika fungsi belum ada
-      const userID = getCurrentUserId();
-      localStorage.setItem('sicermat_selected_addon_type', type);
-      localStorage.setItem('sicermat_selected_addon_kode', code);
-      window.location.href = 'qris-addon.html';
-    }
-  } else if (type === 'NEWCAT') {
-    if (typeof processNewCatSelection === 'function') {
-      processNewCatSelection(type);
-    } else {
-      // Fallback jika fungsi belum ada
-      const userID = getCurrentUserId();
-      localStorage.setItem('sicermat_selected_addon_type', type);
-      localStorage.setItem('sicermat_selected_newcat_kode', code);
-      window.location.href = 'qris-newcat.html';
-    }
-  }
-}
-
-// 15. Inisialisasi saat halaman dimuat
+// 14. Inisialisasi saat halaman dimuat
 document.addEventListener('DOMContentLoaded', function() {
   // Cek apakah modal addOnModal sudah ada di HTML
   if (!document.getElementById('addOnModal')) {
