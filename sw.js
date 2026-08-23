@@ -1,11 +1,11 @@
 /* ============================================================
-   SERVICE WORKER SiCerMat - Versi 2.0
+   SERVICE WORKER SiCerMat - Versi 2.3
    - Cache Aset Statis (HTML, CSS, JS, Gambar)
    - Strategi: Cache First untuk aset, Network First untuk navigasi
    - Mendukung PWA (Offline Mode)
    ============================================================ */
 
-const CACHE_NAME = 'sicermat-cache-v2.0';
+const CACHE_NAME = 'sicermat-cache-v2.3'; // <-- PERBARUI KE v2.3
 const OFFLINE_URL = 'offline.html';
 
 // Daftar aset yang wajib di-cache saat pertama kali dibuka
