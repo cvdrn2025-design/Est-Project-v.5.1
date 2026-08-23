@@ -907,68 +907,74 @@
       }
     }
 
-    // ============================================================
-    // 7. FUNGSI PROSES ADD-ON & KATEGORI BARU (BARU)
-    // ============================================================
-    function processAddonSelection(type) {
-        const userID = getCurrentUserId();
-        if (!userID) {
-            alert('ID User tidak ditemukan. Silakan muat ulang aplikasi.');
-            return;
-        }
-
-        // Simpan tipe add-on yang dipilih
-        localStorage.setItem('sicermat_selected_addon_type', type);
-
-        // Generate kode Add-on unik
-        const addonCode = 'ADDON-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-
-        // Simpan ke Firebase agar admin bisa memverifikasi
-        const addonRef = database.ref('pendingAddonPayments/' + userID);
-        addonRef.set({
-            kode: addonCode,
-            tipe: type,
-            status: 'menunggu_pembayaran',
-            timestamp: Date.now()
-        }).then(() => {
-            console.log('Kode Add-on berhasil disimpan ke Firebase:', addonCode);
-            localStorage.setItem('sicermat_selected_addon_kode', addonCode);
-            window.location.href = 'qris-addon.html';
-        }).catch(err => {
-            console.error('Gagal menyimpan kode ke Firebase:', err);
-            alert('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-        });
+// ============================================================
+// 7. FUNGSI PROSES ADD-ON & KATEGORI BARU (BARU - DIPERBAIKI)
+// ============================================================
+function processAddonSelection(type) {
+    const userID = getCurrentUserId();
+    if (!userID) {
+        alert('ID User tidak ditemukan. Silakan muat ulang aplikasi.');
+        return;
     }
 
-    function processNewCatSelection(type) {
-        const userID = getCurrentUserId();
-        if (!userID) {
-            alert('ID User tidak ditemukan. Silakan muat ulang aplikasi.');
-            return;
-        }
+    // Tentukan kategori yang sedang dipilih (dari dropdown filter)
+    const selectedCategory = document.getElementById('ahsCategoryFilter').value;
+    const category = (selectedCategory && selectedCategory !== 'ALL') ? selectedCategory : 'Lainnya';
 
-        // Simpan tipe add-on yang dipilih
-        localStorage.setItem('sicermat_selected_addon_type', type);
+    // Generate kode Add-on: ADDON-[Kategori]-[Kode Acak]
+    const categorySlug = category.replace(/[^a-zA-Z0-9]/g, '-'); // Ganti spasi/simbol dengan strip
+    const addonCode = 'ADDON-' + categorySlug + '-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
 
-        // Generate kode Kategori Baru yang unik
-        const newCatCode = 'NEWCAT-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+    // Simpan ke Firebase agar admin bisa memverifikasi
+    const addonRef = database.ref('pendingAddonPayments/' + userID);
+    addonRef.set({
+        kode: addonCode,
+        tipe: type,
+        category: category, // <-- PENTING: Simpan kategori asli
+        status: 'menunggu_pembayaran',
+        timestamp: Date.now()
+    }).then(() => {
+        console.log('Kode Add-on berhasil disimpan ke Firebase:', addonCode);
+        localStorage.setItem('sicermat_selected_addon_kode', addonCode);
+        window.location.href = 'qris-addon.html';
+    }).catch(err => {
+        console.error('Gagal menyimpan kode ke Firebase:', err);
+        alert('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    });
+}
 
-        // Simpan ke Firebase agar admin bisa memverifikasi
-        const newCatRef = database.ref('pendingNewCatPayments/' + userID);
-        newCatRef.set({
-            kode: newCatCode,
-            tipe: type,
-            status: 'menunggu_pembayaran',
-            timestamp: Date.now()
-        }).then(() => {
-            console.log('Kode Kategori Baru berhasil disimpan ke Firebase:', newCatCode);
-            localStorage.setItem('sicermat_selected_newcat_kode', newCatCode);
-            window.location.href = 'qris-newcat.html';
-        }).catch(err => {
-            console.error('Gagal menyimpan kode ke Firebase:', err);
-            alert('Gagal terhubung ke server. Periksa koneksi internet Anda.');
-        });
+function processNewCatSelection(type) {
+    const userID = getCurrentUserId();
+    if (!userID) {
+        alert('ID User tidak ditemukan. Silakan muat ulang aplikasi.');
+        return;
     }
+
+    // Tentukan kategori baru yang dipilih
+    const selectedCategory = document.getElementById('ahsCategoryFilter').value;
+    const category = (selectedCategory && selectedCategory !== 'ALL') ? selectedCategory : 'Kategori Baru';
+
+    // Generate kode Kategori Baru: NEWCAT-[Kategori]-[Kode Acak]
+    const categorySlug = category.replace(/[^a-zA-Z0-9]/g, '-');
+    const newCatCode = 'NEWCAT-' + categorySlug + '-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+
+    // Simpan ke Firebase agar admin bisa memverifikasi
+    const newCatRef = database.ref('pendingNewCatPayments/' + userID);
+    newCatRef.set({
+        kode: newCatCode,
+        tipe: type,
+        category: category, // <-- PENTING: Simpan kategori asli
+        status: 'menunggu_pembayaran',
+        timestamp: Date.now()
+    }).then(() => {
+        console.log('Kode Kategori Baru berhasil disimpan ke Firebase:', newCatCode);
+        localStorage.setItem('sicermat_selected_newcat_kode', newCatCode);
+        window.location.href = 'qris-newcat.html';
+    }).catch(err => {
+        console.error('Gagal menyimpan kode ke Firebase:', err);
+        alert('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+    });
+}
 
     // ============================================================
     // 8. FILTER AHS & LABEL KOMPONEN
